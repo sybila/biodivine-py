@@ -32,7 +32,7 @@ test:
 lint:
 	cargo fmt --check
 	cargo clippy --workspace --all-targets -- -D warnings
-	$(VENV)/bin/ruff check biodivine
+	$(VENV)/bin/ruff check biodivine scripts
 
 docs:
 	rm -rf biodivine/docs/_build

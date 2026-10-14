@@ -1,0 +1,2 @@
+# The Python files outside the `biodivine` package (`scripts/`) follow the package's configuration.
+extend = "biodivine/pyproject.toml"

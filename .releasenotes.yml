@@ -1,0 +1,28 @@
+# Configuration of the release-notes generator (https://github.com/daemontus/llm-release-notes),
+# which `.github/workflows/release.yml` runs for every release tag.
+project_type: library
+
+# Lists the public API of the `biodivine` package from its sources; the generator runs it on both
+# versions and diffs the outputs.
+public_api_command: "python3 scripts/public_api.py"
+
+# LLM endpoint (any OpenAI-compatible chat completions API). Required: model, max_context_tokens.
+base_url: https://openrouter.ai/api/v1
+model: google/gemini-4-argon
+max_context_tokens: 1048576
+
+project_prompt: |
+  This repository contains the Python bindings of the Biodivine libraries. It publishes two PyPI
+  packages with the same version: `biodivine`, the documented pure-Python package with one submodule
+  per library (e.g. `biodivine.xml_dom`), and `biodivine-sys`, its native extension, which users
+  never import directly. Write the notes for users of `biodivine`: prefer Python examples and
+  reference the public classes of the `biodivine` submodules. The behaviour of each submodule comes
+  from a Rust library that `biodivine-py-sys/Cargo.toml` pins to a release tag; when that tag
+  changes, name the library and its new version, and summarize what the update changes for Python
+  users. Mention changes to the supported Python versions or platforms (the `requires-python`
+  fields, the wheels built by `.github/workflows/release.yml`). Changes to tests, CI and development
+  tooling only deserve a brief mention.
+
+# Exclude irrelevant paths from the diff (git pathspecs, passed as :!path).
+diff_exclude_paths:
+  - Cargo.lock
