@@ -9,3 +9,6 @@ __pycache__
 biodivine/docs/_build
 # rattler-build output (`rattler-build build --recipe conda/recipe.yaml`)
 /output
+# `make coverage`
+.coverage
+coverage.xml

@@ -1,3 +1,14 @@
+[![PyPI](https://img.shields.io/pypi/v/biodivine?style=flat-square)](https://pypi.org/project/biodivine/)
+[![Conda](https://img.shields.io/conda/vn/daemontus/biodivine?style=flat-square)](https://anaconda.org/daemontus/biodivine)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square)](https://github.com/sybila/biodivine-py/blob/main/biodivine/pyproject.toml)
+[![Api Docs](https://img.shields.io/badge/docs-api-yellowgreen?style=flat-square)](https://biodivine.fi.muni.cz/docs/biodivine-py/latest/)
+[![Continuous integration](https://img.shields.io/github/actions/workflow/status/sybila/biodivine-py/build.yml?branch=main&style=flat-square)](https://github.com/sybila/biodivine-py/actions?query=workflow%3Abuild)
+[![Coverage](https://img.shields.io/codecov/c/github/sybila/biodivine-py?style=flat-square)](https://codecov.io/gh/sybila/biodivine-py)
+[![MSRV](https://img.shields.io/badge/MSRV-1.95-blue?style=flat-square)](https://github.com/sybila/biodivine-py/blob/main/Cargo.toml)
+[![GitHub issues](https://img.shields.io/github/issues/sybila/biodivine-py?style=flat-square)](https://github.com/sybila/biodivine-py/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/sybila/biodivine-py?style=flat-square)](https://github.com/sybila/biodivine-py/commits/main)
+[![License](https://img.shields.io/github/license/sybila/biodivine-py?style=flat-square)](https://github.com/sybila/biodivine-py/blob/main/LICENSE)
+
 # Biodivine Python bindings
 
 This repository builds the Python interface of the Biodivine libraries. It produces two Python
@@ -62,6 +73,7 @@ The `Makefile` wraps everything, using a virtual environment in `.venv`:
 make venv       # create .venv with maturin, pytest, ruff and the documentation toolchain
 make develop    # build biodivine-sys into .venv, install biodivine in editable mode
 make test       # cargo test, then pytest
+make coverage   # pytest with line and branch coverage of biodivine (also writes coverage.xml)
 make lint       # cargo fmt --check, cargo clippy -D warnings, ruff
 make docs       # API reference of biodivine (biodivine/docs/_build/index.html)
 make verify     # all of the above, plus rustdoc and the minimum supported Rust version
@@ -83,6 +95,8 @@ dependencies with Cargo `[patch]` entries during the build (described in the boo
 * `python`: builds the release wheel of `biodivine-sys` and runs `ruff` and `pytest` against it on
   Linux, macOS and Windows, with the oldest and the newest supported Python version and with the
   free-threaded build of the newest one;
+* `coverage`: measures the coverage of the `biodivine` package by its test suite and uploads it to
+  [Codecov](https://codecov.io/gh/sybila/biodivine-py) (with the `CODECOV_TOKEN` secret);
 * `conda`: builds the conda packages on Linux, which runs the test suite against them;
 * `docs`: builds the API reference with warnings denied.
 

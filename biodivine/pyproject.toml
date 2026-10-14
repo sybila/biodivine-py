@@ -42,6 +42,16 @@ testpaths = ["tests"]
 # share a file name.
 addopts = "--import-mode=importlib"
 
+# Coverage of the Python test suite (`make coverage` in the repository root). The package is
+# installed in editable mode, so the measured files are those of this repository.
+[tool.coverage.run]
+source_pkgs = ["biodivine"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py39"
