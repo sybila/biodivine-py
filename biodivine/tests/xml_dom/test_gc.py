@@ -108,9 +108,11 @@ def test_handles_released_by_another_thread_are_safe_while_collecting() -> None:
     for worker in workers:
         worker.join()
 
-    # The rooted tree is untouched, and once the workers have stopped only the root is left: the
-    # final collection cannot find anything that an earlier cycle missed.
+    # The rooted tree is untouched. The workers may outlast the collections above (on a
+    # free-threaded interpreter they run in parallel with them), so one more collection reclaims
+    # their remaining garbage; after it, only the root is left and nothing more can be collected.
     assert [child.local_name for child in root.child_elements()] == []
+    document.collect_garbage()
     assert document.node_count == 1
     assert document.collect_garbage().collected == 0
     assert document.is_valid()
