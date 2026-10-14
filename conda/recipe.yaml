@@ -74,7 +74,7 @@ outputs:
           imports:
             - biodivine
             - biodivine.xml_dom
-          python_version: ["${{ python_min }}.*", "3.14.*"]
+          python_version: ["${{ python_min }}.*", "3.15.*"]
       # The full test suite of the package. Some tests read files of the repository (the version
       # checks, the documentation examples, the license copies, the public API listing); every file
       # a test reads must be listed here.

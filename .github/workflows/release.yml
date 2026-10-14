@@ -6,8 +6,8 @@
 #
 # The wheels of `biodivine-sys` are built against the stable ABI (the `abi3` feature), so one wheel
 # per platform covers every supported CPython version. Free-threaded CPython cannot use the stable
-# ABI and gets one wheel per platform for its newest version. Other platforms and interpreters build
-# the extension from the source distribution, which needs a Rust toolchain.
+# ABI and gets one wheel per platform for each of its two newest versions. Other platforms and
+# interpreters build the extension from the source distribution, which needs a Rust toolchain.
 #
 # Secrets and settings:
 # * PyPI trusted publishing: both PyPI projects list this repository, this workflow and the `pypi`
@@ -27,8 +27,10 @@ permissions:
   contents: read
 
 env:
-  # The free-threaded interpreter that gets its own wheels.
-  FREE_THREADED_PYTHON: "3.14t"
+  # The free-threaded interpreters that get their own wheels (one wheel per version, because
+  # free-threaded CPython has no stable ABI yet): the two newest versions.
+  FREE_THREADED_OLDER: "3.14t"
+  FREE_THREADED_NEWEST: "3.15t"
   # The anaconda.org channel of the conda packages.
   ANACONDA_OWNER: daemontus
 
@@ -72,28 +74,34 @@ jobs:
       - uses: actions/checkout@v7
       # Outside a Linux container, maturin builds for the interpreters of the runner. On Windows,
       # linking against the stable ABI also needs the `python3.lib` of an interpreter.
-      - id: free-threaded
+      - id: free-threaded-older
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ env.FREE_THREADED_PYTHON }}
+          python-version: ${{ env.FREE_THREADED_OLDER }}
+      - id: free-threaded-newest
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.FREE_THREADED_NEWEST }}
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
       - name: Stable-ABI wheel
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.abi3 }}
           args: --release --out dist --manifest-path biodivine-py-sys/Cargo.toml
-      - name: Free-threaded wheel
+      - name: Free-threaded wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.free-threaded }}
-          # In a Linux container, the interpreter is found by name, elsewhere by its path.
+          # In a Linux container, the interpreters are found by name, elsewhere by their paths.
           args: >-
             --release --out dist --manifest-path biodivine-py-sys/Cargo.toml
-            --interpreter ${{ runner.os == 'Linux' && format('python{0}', env.FREE_THREADED_PYTHON) || steps.free-threaded.outputs.python-path }}
+            --interpreter
+            ${{ runner.os == 'Linux' && format('python{0}', env.FREE_THREADED_OLDER) || steps.free-threaded-older.outputs.python-path }}
+            ${{ runner.os == 'Linux' && format('python{0}', env.FREE_THREADED_NEWEST) || steps.free-threaded-newest.outputs.python-path }}
       - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.abi3 || 'native' }}
@@ -129,23 +137,25 @@ jobs:
 
   # Installs the release artifacts themselves (not a fresh build) and runs the test suite against
   # them: on every architecture, with the oldest and the newest supported Python version and with
-  # the free-threaded interpreter, and on Linux also with every version in between (which all use
-  # the same stable-ABI wheel).
+  # the newest free-threaded interpreter, and on Linux also with every version in between (which
+  # all use the same stable-ABI wheel) and the older free-threaded one.
   test:
     needs: [wheels, biodivine]
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
-        python-version: ["3.9", "3.14", "3.14t"]
+        python-version: ["3.9", "3.15", "3.15t"]
         include:
           - { os: ubuntu-latest, python-version: "3.10" }
           - { os: ubuntu-latest, python-version: "3.11" }
           - { os: ubuntu-latest, python-version: "3.12" }
           - { os: ubuntu-latest, python-version: "3.13" }
+          - { os: ubuntu-latest, python-version: "3.14" }
+          - { os: ubuntu-latest, python-version: "3.14t" }
           # There is no Python 3.9 for Windows on ARM.
-          - { os: windows-11-arm, python-version: "3.14" }
-          - { os: windows-11-arm, python-version: "3.14t" }
+          - { os: windows-11-arm, python-version: "3.15" }
+          - { os: windows-11-arm, python-version: "3.15t" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

@@ -127,11 +127,11 @@ Both distributions are released together, with the same version:
 The `biodivine-sys` wheels are built against the stable ABI of Python 3.9: the extension only uses
 the part of the Python C API that CPython promises to keep binary compatible, so one wheel, tagged
 `cp39-abi3`, installs on CPython 3.9 and every later version, without a build per version. There is
-therefore one wheel per platform: Linux (manylinux2014 and musllinux, x86-64 and ARM), macOS (ARM and x86-64) and Windows
-(x86-64 and ARM). Free-threaded Python cannot use the stable ABI, so each platform also gets a wheel
-for the free-threaded build of the newest Python version (on Linux for manylinux_2_28, which is
-glibc 2.28). Anywhere else, pip builds the extension from the source distribution, which needs a
-Rust toolchain.
+therefore one wheel per platform: Linux (manylinux2014 and musllinux, x86-64 and ARM), macOS (ARM
+and x86-64) and Windows (x86-64 and ARM). Free-threaded Python cannot use the stable ABI, so each
+platform also gets a wheel for each of the two newest free-threaded versions, currently 3.14t and
+3.15t (on Linux for manylinux_2_28, which is glibc 2.28, and musllinux). Anywhere else, pip builds
+the extension from the source distribution, which needs a Rust toolchain.
 
 The conda packages are built by [rattler-build](https://rattler.build) from
 [`conda/recipe.yaml`](conda/recipe.yaml): a `biodivine-sys` package per platform (Linux and macOS,
