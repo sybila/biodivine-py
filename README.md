@@ -150,7 +150,9 @@ the extension from the source distribution, which needs a Rust toolchain.
 The conda packages are built by [rattler-build](https://rattler.build) from
 [`conda/recipe.yaml`](conda/recipe.yaml): a `biodivine-sys` package per platform (Linux and macOS,
 x86-64 and ARM, and Windows x86-64), which uses conda-forge's `python-abi3` convention to cover
-every Python version from 3.9 on, and a `noarch` `biodivine` package. To build and test them
+every Python version from 3.9 on, and a `noarch` `biodivine` package. The oldest supported systems
+(glibc 2.17 on Linux, macOS 10.13 on x86-64 and 11.0 on ARM) are set in
+[`conda/variants.yaml`](conda/variants.yaml). To build and test them
 locally (with rattler-build installed):
 
 ```sh

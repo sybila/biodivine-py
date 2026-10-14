@@ -35,6 +35,9 @@ outputs:
       build:
         - ${{ compiler('c') }}
         - ${{ compiler('rust') }}
+        # The oldest supported macOS version or glibc, set in variants.yaml.
+        - if: unix
+          then: ${{ stdlib('c') }}
       host:
         - python ${{ python_min }}.*
         - python-abi3 ${{ python_min }}.*

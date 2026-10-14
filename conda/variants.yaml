@@ -1,0 +1,19 @@
+# Variant configuration of `recipe.yaml`, which rattler-build reads automatically.
+#
+# The oldest systems the native package supports. Without these, `stdlib('c')` in the recipe would
+# resolve to the newest SDK of the build environment, and the extension would require the macOS
+# version (or glibc) of the build machine. The values are those of conda-forge's global pinning
+# (which a recipe outside conda-forge does not get), and match the PyPI wheels on Linux
+# (manylinux2014, glibc 2.17).
+c_stdlib:
+  - if: linux
+    then: sysroot
+  - if: osx
+    then: macosx_deployment_target
+c_stdlib_version:
+  - if: linux
+    then: "2.17"
+  - if: osx and x86_64
+    then: "10.13"
+  - if: osx and arm64
+    then: "11.0"
