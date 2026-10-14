@@ -40,4 +40,4 @@ docs:
 
 verify: lint develop test docs
 	RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --workspace
-	cargo +1.88.0 test --workspace
+	cargo +1.95.0 test --workspace

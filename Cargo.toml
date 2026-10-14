@@ -10,7 +10,7 @@ resolver = "3"
 # `dynamic = ["version"]`), and `biodivine/pyproject.toml` repeats it, together with an exact pin of
 # `biodivine-sys`. `biodivine/tests/test_package.py` checks that the three numbers agree.
 version = "0.1.0"
-rust-version = "1.88"
+rust-version = "1.95"
 license = "MIT"
 authors = ["Sybila"]
 repository = "https://github.com/sybila/biodivine-py"
