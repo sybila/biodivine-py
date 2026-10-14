@@ -64,10 +64,20 @@ make docs       # API reference of biodivine (biodivine/docs/_build/index.html)
 make verify     # all of the above, plus rustdoc and the minimum supported Rust version
 ```
 
-The `_sys` crates are git dependencies of [`biodivine-py-sys/Cargo.toml`](biodivine-py-sys/Cargo.toml).
-When this repository is checked out as part of the `biodivine` workspace, where every library is a
-submodule next to it, they can be switched to `path` dependencies while a library and its bindings
-change together.
+The `_sys` crates are git dependencies of [`biodivine-py-sys/Cargo.toml`](biodivine-py-sys/Cargo.toml),
+pinned to release tags of their repositories. When this repository is checked out as part of the
+`biodivine` workspace, where every library is a submodule next to it, they can be switched to `path`
+dependencies while a library and its bindings change together.
+
+### Continuous integration
+
+[`build.yml`](.github/workflows/build.yml) runs on pushes and pull requests:
+
+* `rust`: `cargo fmt`, `cargo clippy`, `cargo test` and rustdoc on a pinned toolchain, then
+  `cargo test` on the minimum supported Rust version;
+* `python`: builds the release wheel of `biodivine-sys` and runs `ruff` and `pytest` against it on
+  Linux, macOS and Windows, with the oldest and the newest supported Python version;
+* `docs`: builds the API reference with warnings denied.
 
 ### Adding a library
 
@@ -79,6 +89,29 @@ change together.
 3. Add the Python submodule `biodivine/src/biodivine/<name>/`, import it in
    `biodivine/src/biodivine/__init__.py`, and give it tests in `biodivine/tests/<name>/` and an API
    reference in `biodivine/docs/<name>/`.
+
+## Releasing
+
+Both distributions are released together, with the same version:
+
+1. Pin every `_sys` crate to a release tag of its library.
+2. Set the new version in `[workspace.package]` of [`Cargo.toml`](Cargo.toml) and, twice (the
+   version and the pin of `biodivine-sys`), in [`biodivine/pyproject.toml`](biodivine/pyproject.toml).
+   `make verify` checks that the three agree.
+3. Push the tag `v<version>`. [`release.yml`](.github/workflows/release.yml) checks that the tag
+   matches the version, runs every check of `build.yml`, builds the wheels and the source
+   distribution of `biodivine-sys` and the wheel and source distribution of `biodivine`, installs
+   the built wheels on Linux (x86-64 and ARM), macOS and Windows and runs the test suite against
+   them, and finally publishes everything to PyPI.
+
+The `biodivine-sys` wheels are built against the stable ABI of Python 3.9, so there is one wheel per
+platform: Linux (manylinux and musllinux, x86-64 and ARM), macOS (ARM and x86-64) and Windows
+(x86-64). Elsewhere, including free-threaded Python builds, pip builds the extension from the source
+distribution, which needs a Rust toolchain.
+
+Publishing uses PyPI's trusted publishing: the `biodivine` and `biodivine-sys` projects on PyPI must
+both list this repository, the `release.yml` workflow and the `pypi` environment as a trusted
+publisher.
 
 ## License
 

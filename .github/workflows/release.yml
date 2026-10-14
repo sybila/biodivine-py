@@ -1,8 +1,12 @@
 # Publishes both distributions to PyPI when a version tag is pushed. `biodivine` pins
 # `biodivine-sys` exactly, so the two are always released together, with the same version.
 #
-# PyPI publishing uses trusted publishing: both PyPI projects must list this repository and this
-# workflow as a trusted publisher.
+# The wheels of `biodivine-sys` are built against the stable ABI (the `abi3` feature), so one wheel
+# per platform covers every supported CPython version. Other platforms, and free-threaded
+# interpreters, build the extension from the source distribution, which needs a Rust toolchain.
+#
+# PyPI publishing uses trusted publishing: both PyPI projects must list this repository, this
+# workflow and the `pypi` environment as a trusted publisher.
 name: release
 
 on:
@@ -10,75 +14,119 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions:
+  contents: read
+
 jobs:
+  # The tag must name the version that is being released.
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - shell: bash
+        run: |
+          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"$/\1/p' Cargo.toml)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "The tag $GITHUB_REF_NAME does not match the version $version in Cargo.toml."
+            exit 1
+          fi
+
+  # Every check of a regular build.
+  build:
+    uses: ./.github/workflows/build.yml
+
   wheels:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64
-          - os: ubuntu-latest
-            target: aarch64
-          - os: macos-latest
-            target: aarch64
-          - os: macos-13
-            target: x86_64
-          - os: windows-latest
-            target: x64
+          - { os: ubuntu-latest, target: x86_64, manylinux: auto }
+          - { os: ubuntu-latest, target: aarch64, manylinux: auto }
+          - { os: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
+          - { os: ubuntu-latest, target: aarch64, manylinux: musllinux_1_2 }
+          - { os: macos-latest, target: aarch64 }
+          - { os: macos-latest, target: x86_64 }
+          - { os: windows-latest, target: x64 }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      # On Windows, linking against the stable ABI needs the `python3.lib` of an interpreter.
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --manifest-path biodivine-py-sys/Cargo.toml --find-interpreter
-          manylinux: auto
-      - uses: actions/upload-artifact@v4
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --out dist --manifest-path biodivine-py-sys/Cargo.toml
+      - uses: actions/upload-artifact@v7
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.target }}
+          name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'native' }}
           path: dist
 
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist --manifest-path biodivine-py-sys/Cargo.toml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: wheels-sdist
+          name: dist-sdist
           path: dist
 
   biodivine:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: |
           python -m pip install build
           python -m build biodivine --outdir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: wheels-biodivine
+          name: dist-biodivine
           path: dist
 
+  # Installs the release artifacts themselves (not a fresh build) on the oldest and the newest
+  # supported Python version, and runs the test suite against them.
+  test:
+    needs: [wheels, biodivine]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        python-version: ["3.9", "3.14"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+      - shell: bash
+        run: |
+          python -m pip install pytest
+          python -m pip install --no-index --only-binary :all: --find-links dist biodivine
+      - run: python -m pytest biodivine
+
   publish:
-    needs: [wheels, sdist, biodivine]
+    needs: [version, build, sdist, test]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          pattern: wheels-*
+          pattern: dist-*
           merge-multiple: true
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
