@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "biodivine"
+# Kept equal to `[workspace.package] version` in ../Cargo.toml; `tests/test_package.py` checks it.
+version = "0.1.0"
+description = "Python interface of the Biodivine libraries for systems biology."
+requires-python = ">=3.9"
+readme = "README.md"
+license = "MIT"
+# A copy of the repository's LICENSE (a package cannot include files outside its directory);
+# `biodivine/tests/test_package.py` checks that the copy is up to date.
+license-files = ["LICENSE"]
+authors = [{ name = "Sybila" }]
+keywords = ["xml", "dom", "systems biology"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Text Processing :: Markup :: XML",
+    "Typing :: Typed",
+]
+# The native extension is released together with this package and pinned exactly: the pure-Python
+# layer relies on the precise API of the `_sys` modules it wraps.
+dependencies = ["biodivine-sys==0.1.0"]
+
+[project.urls]
+Homepage = "https://github.com/sybila/biodivine-py"
+Repository = "https://github.com/sybila/biodivine-py"
+# The documentation of the latest stable release (the release workflow deploys each version under
+# its tag, and points `latest` at the newest stable one).
+Documentation = "https://biodivine.fi.muni.cz/docs/biodivine-py/latest/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/biodivine"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The test directories mirror the package layout, so test modules of different submodules may
+# share a file name.
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+# Pyflakes (unused and undefined names) plus syntax errors.
+select = ["F", "E9"]

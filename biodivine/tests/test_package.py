@@ -1,0 +1,68 @@
+"""The ``biodivine`` package as a whole: its submodules and its version."""
+
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import biodivine_sys
+
+import biodivine
+
+REPOSITORY = Path(__file__).resolve().parents[2]
+
+
+def _workspace_version() -> str:
+    manifest = (REPOSITORY / "Cargo.toml").read_text(encoding="utf-8")
+    workspace = manifest[manifest.index("[workspace.package]") :]
+    found = re.search(r'^version = "([^"]+)"', workspace, flags=re.MULTILINE)
+    assert found is not None
+    return found.group(1)
+
+
+def test_every_library_is_a_submodule() -> None:
+    assert biodivine.__all__ == ["__version__", "xml_dom"]
+    assert biodivine_sys.__all__ == ["__version__", "xml_dom"]
+    assert isinstance(biodivine.xml_dom, ModuleType)
+
+
+def test_the_versions_agree() -> None:
+    """The extension, the package and its pin of the extension are released together."""
+    version = _workspace_version()
+    assert biodivine_sys.__version__ == version
+    assert biodivine.__version__ == version
+    pyproject = (REPOSITORY / "biodivine" / "pyproject.toml").read_text(encoding="utf-8")
+    assert f'version = "{version}"' in pyproject
+    assert f'"biodivine-sys=={version}"' in pyproject
+    recipe = (REPOSITORY / "conda" / "recipe.yaml").read_text(encoding="utf-8")
+    assert f'  version: "{version}"' in recipe
+
+
+def test_the_public_api_listing_runs() -> None:
+    """The release notes compare the output of `scripts/public_api.py` between two versions."""
+    listing = subprocess.run(
+        [sys.executable, str(REPOSITORY / "scripts" / "public_api.py")],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert listing == sorted(listing)
+    assert "biodivine.xml_dom.Document (re-exported from .document)" in listing
+    assert "biodivine.xml_dom.document.Document: class Document" in listing
+
+
+def test_native_submodules_are_importable_by_name() -> None:
+    import biodivine_sys.xml_dom
+
+    assert biodivine_sys.xml_dom.Document.__module__ == "biodivine_sys.xml_dom"
+
+
+def test_the_distributions_ship_the_license() -> None:
+    """Each distribution includes a copy of the repository's license."""
+    license_text = (REPOSITORY / "LICENSE").read_text(encoding="utf-8")
+    for package in ("biodivine", "biodivine-py-sys"):
+        copy = (REPOSITORY / package / "LICENSE").read_text(encoding="utf-8")
+        assert copy == license_text, package

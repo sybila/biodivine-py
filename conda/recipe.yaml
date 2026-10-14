@@ -1,0 +1,103 @@
+# The conda packages of both distributions, built by rattler-build (https://rattler.build) from this
+# checkout:
+#
+#     rattler-build build --recipe conda/recipe.yaml -c conda-forge
+#
+# `biodivine-sys` is built against the stable ABI (see the `abi3` feature in
+# `biodivine-py-sys/Cargo.toml`), so there is one package per platform for every Python version from
+# `python_min` on. `biodivine` is pure Python (`noarch`) and pins `biodivine-sys` exactly, like on
+# PyPI. The release workflow builds both for every tag and uploads them to anaconda.org.
+context:
+  # Kept equal to `[workspace.package] version` in ../Cargo.toml; `test_package.py` checks it.
+  version: "0.1.0"
+  # The oldest supported Python version, as in the `requires-python` fields and `abi3-py39`.
+  python_min: "3.9"
+
+recipe:
+  name: biodivine-split
+  version: ${{ version }}
+
+source:
+  path: ..
+
+build:
+  number: 0
+
+outputs:
+  - package:
+      name: biodivine-sys
+    build:
+      script:
+        - python -m pip install ./biodivine-py-sys -vv --no-deps --no-build-isolation
+      python:
+        version_independent: true
+    requirements:
+      build:
+        - ${{ compiler('c') }}
+        - ${{ compiler('rust') }}
+      host:
+        - python ${{ python_min }}.*
+        - python-abi3 ${{ python_min }}.*
+        - maturin >=1.9,<2
+        - pip
+      run:
+        - python >=${{ python_min }}
+    tests:
+      - python:
+          imports:
+            - biodivine_sys
+            - biodivine_sys.xml_dom
+          python_version: ${{ python_min }}.*
+          pip_check: false
+    about:
+      summary: Native extension of the Biodivine Python bindings. Install `biodivine` instead.
+
+  - package:
+      name: biodivine
+    build:
+      noarch: python
+      script:
+        - python -m pip install ./biodivine -vv --no-deps --no-build-isolation
+    requirements:
+      host:
+        - python ${{ python_min }}.*
+        - hatchling >=1.26
+        - pip
+      run:
+        - python >=${{ python_min }}
+        # The version only: `biodivine` is built once (`noarch`), but every platform has its own
+        # build of `biodivine-sys`, so an exact pin (which includes the build string) would only
+        # match the platform `biodivine` happened to be built on.
+        - biodivine-sys ==${{ version }}
+    tests:
+      - python:
+          imports:
+            - biodivine
+            - biodivine.xml_dom
+          python_version: ["${{ python_min }}.*", "3.15.*"]
+      # The full test suite of the package. Some tests read files of the repository (the version
+      # checks, the documentation examples, the license copies, the public API listing); every file
+      # a test reads must be listed here.
+      - script:
+          - python -m pytest biodivine
+        requirements:
+          run:
+            - pytest
+        files:
+          source:
+            - Cargo.toml
+            - LICENSE
+            - README.md
+            - biodivine/
+            - biodivine-py-sys/LICENSE
+            - conda/recipe.yaml
+            - scripts/
+    about:
+      summary: Python interface of the Biodivine libraries for systems biology.
+
+about:
+  homepage: https://github.com/sybila/biodivine-py
+  repository: https://github.com/sybila/biodivine-py
+  documentation: https://biodivine.fi.muni.cz/docs/biodivine-py/latest/
+  license: MIT
+  license_file: LICENSE

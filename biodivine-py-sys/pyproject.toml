@@ -1,0 +1,29 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "biodivine-sys"
+# Taken from `Cargo.toml` (which inherits it from `[workspace.package]`).
+dynamic = ["version"]
+description = "Native extension of the Biodivine Python bindings. Install `biodivine` instead."
+requires-python = ">=3.9"
+readme = "README.md"
+license = "MIT"
+# A copy of the repository's LICENSE (a package cannot include files outside its directory);
+# `biodivine/tests/test_package.py` checks that the copy is up to date.
+license-files = ["LICENSE"]
+authors = [{ name = "Sybila" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+]
+
+[project.urls]
+Homepage = "https://github.com/sybila/biodivine-py"
+Repository = "https://github.com/sybila/biodivine-py"
+
+[tool.maturin]
+module-name = "biodivine_sys"
+features = ["extension-module", "abi3"]
