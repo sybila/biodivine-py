@@ -67,6 +67,10 @@ def test_every_long_operation_can_be_interrupted() -> None:
         started = time.perf_counter()
         action()
         duration = time.perf_counter() - started
+        # The copies made above are garbage now. Reclaim them, so that the interrupted run does not
+        # start with an automatic collection, which would count towards its time.
+        document.collect_garbage()
+        target.collect_garbage()
         # Interrupted a tenth of the way in, the exception must surface well before the operation
         # could have finished.
         elapsed = _interrupted_after(duration / 10, action)
