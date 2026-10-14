@@ -19,8 +19,8 @@ print(document.root.children())   # [Element('item', id=1)]
 The [package README](biodivine/README.md) is the user-facing introduction (it is also the package's
 PyPI page), and the API reference is built from [`biodivine/docs`](biodivine/docs) by `make docs`.
 The API reference of every release is published at
-`https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/`, e.g.
-[v0.1.0](https://biodivine.fi.muni.cz/docs/biodivine-py/v0.1.0/).
+`https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/`, and that of the latest stable release also
+at [`latest/`](https://biodivine.fi.muni.cz/docs/biodivine-py/latest/).
 
 ## Libraries
 
@@ -70,7 +70,9 @@ make verify     # all of the above, plus rustdoc and the minimum supported Rust 
 The `_sys` crates are git dependencies of [`biodivine-py-sys/Cargo.toml`](biodivine-py-sys/Cargo.toml),
 pinned to release tags of their repositories. When this repository is checked out as part of the
 `biodivine` workspace, where every library is a submodule next to it, they can be switched to `path`
-dependencies while a library and its bindings change together.
+dependencies while a library and its bindings change together. The Biodivine book, which must test
+the checked-out libraries, does not edit this repository: its `make python-env` overrides the git
+dependencies with Cargo `[patch]` entries during the build (described in the book's README).
 
 ### Continuous integration
 
@@ -99,18 +101,17 @@ dependencies while a library and its bindings change together.
 Both distributions are released together, with the same version:
 
 1. Pin every `_sys` crate to a release tag of its library.
-2. Set the new version in `[workspace.package]` of [`Cargo.toml`](Cargo.toml) and in
-   [`biodivine/pyproject.toml`](biodivine/pyproject.toml): the version of the package, its pin of
-   `biodivine-sys` and its documentation link; the documentation link in
-   [`biodivine/README.md`](biodivine/README.md) also includes the version. `make verify` checks
-   that all of these agree.
+2. Set the new version in `[workspace.package]` of [`Cargo.toml`](Cargo.toml) and, twice (the
+   version and the pin of `biodivine-sys`), in [`biodivine/pyproject.toml`](biodivine/pyproject.toml).
+   `make verify` checks that the three agree.
 3. Push the tag `v<version>`. [`release.yml`](.github/workflows/release.yml) then:
    * checks that the tag matches the version, and runs every check of `build.yml`;
    * builds the wheels and the source distribution of `biodivine-sys` and the wheel and source
      distribution of `biodivine`, installs the built wheels on every architecture and runs the test
      suite against them;
    * publishes everything to PyPI;
-   * deploys the API reference to `https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/`;
+   * deploys the API reference to `https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/` and, for
+     a stable release (no pre-release suffix such as `-rc.1`), points `latest/` at it;
    * creates a draft GitHub release with the distributions, the documentation and release notes
      generated from the changes since the previous version (configured in
      [`.releasenotes.yml`](.releasenotes.yml); [`scripts/public_api.py`](scripts/public_api.py)

@@ -37,11 +37,6 @@ def test_the_versions_agree() -> None:
     pyproject = (REPOSITORY / "biodivine" / "pyproject.toml").read_text(encoding="utf-8")
     assert f'version = "{version}"' in pyproject
     assert f'"biodivine-sys=={version}"' in pyproject
-    # The links to the API reference point to the documentation of this version.
-    documentation = f"https://biodivine.fi.muni.cz/docs/biodivine-py/v{version}/"
-    assert f'Documentation = "{documentation}"' in pyproject
-    readme = (REPOSITORY / "biodivine" / "README.md").read_text(encoding="utf-8")
-    assert f"]({documentation})" in readme
 
 
 def test_the_public_api_listing_runs() -> None:

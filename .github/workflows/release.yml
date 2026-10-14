@@ -169,7 +169,9 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   # Builds the API reference and copies it to the documentation server, as `<tag>/` in the
-  # directory of this repository. An existing directory of the same tag is replaced.
+  # directory of this repository. An existing directory of the same tag is replaced. For a stable
+  # release (`vX.Y.Z`, without a pre-release suffix), the `latest` symlink next to it is pointed at
+  # the new directory; the package metadata and README link to `latest/`.
   docs:
     needs: publish
     runs-on: ubuntu-latest
@@ -207,6 +209,11 @@ jobs:
               rm -rf '$DEPLOY_DIR/$TAG'
               unzip -q -o /tmp/docs-biodivine-py-$TAG.zip -d '$DEPLOY_DIR'
               rm /tmp/docs-biodivine-py-$TAG.zip"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # A relative link, replaced in one step (`-n`: never follow the old link into a
+            # directory, `-f`: replace it).
+            ssh root@"$TS_HOST" "ln -sfn '$TAG' '$DEPLOY_DIR/latest'"
+          fi
 
   # Creates a draft GitHub release with generated release notes, the distributions and the
   # documentation. It is published by hand, after the notes are reviewed.

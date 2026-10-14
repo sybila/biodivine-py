@@ -46,8 +46,9 @@ Python protocols (`len`, iteration, indexing, equality, hashing) and never retur
 
 ## Documentation
 
-* The [API reference](https://biodivine.fi.muni.cz/docs/biodivine-py/v0.1.0/) of this version of
-  the package documents every submodule, class and function, with examples.
+* The [API reference](https://biodivine.fi.muni.cz/docs/biodivine-py/latest/) documents every
+  submodule, class and function, with examples. It describes the latest release; the reference of
+  an earlier version `X.Y.Z` is at `https://biodivine.fi.muni.cz/docs/biodivine-py/vX.Y.Z/`.
 * The Biodivine book teaches every library with examples in both Python and Rust.
 * The source code, the issue tracker and the development workflow are in the
   [`biodivine-py`](https://github.com/sybila/biodivine-py) repository.
