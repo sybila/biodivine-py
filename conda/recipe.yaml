@@ -75,7 +75,9 @@ outputs:
             - biodivine
             - biodivine.xml_dom
           python_version: ["${{ python_min }}.*", "3.14.*"]
-      # The full test suite of the package, which also reads a few files of the repository.
+      # The full test suite of the package. Some tests read files of the repository (the version
+      # checks, the documentation examples, the license copies, the public API listing); every file
+      # a test reads must be listed here.
       - script:
           - python -m pytest biodivine
         requirements:
@@ -88,6 +90,7 @@ outputs:
             - README.md
             - biodivine/
             - biodivine-py-sys/LICENSE
+            - conda/recipe.yaml
             - scripts/
     about:
       summary: Python interface of the Biodivine libraries for systems biology.
