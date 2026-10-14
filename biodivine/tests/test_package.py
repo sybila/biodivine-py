@@ -41,3 +41,11 @@ def test_native_submodules_are_importable_by_name() -> None:
     import biodivine_sys.xml_dom
 
     assert biodivine_sys.xml_dom.Document.__module__ == "biodivine_sys.xml_dom"
+
+
+def test_the_distributions_ship_the_license() -> None:
+    """Each distribution includes a copy of the repository's license."""
+    license_text = (REPOSITORY / "LICENSE").read_text(encoding="utf-8")
+    for package in ("biodivine", "biodivine-py-sys"):
+        copy = (REPOSITORY / package / "LICENSE").read_text(encoding="utf-8")
+        assert copy == license_text, package

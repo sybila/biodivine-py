@@ -10,6 +10,9 @@ description = "Native extension of the Biodivine Python bindings. Install `biodi
 requires-python = ">=3.9"
 readme = "README.md"
 license = "MIT"
+# A copy of the repository's LICENSE (a package cannot include files outside its directory);
+# `biodivine/tests/test_package.py` checks that the copy is up to date.
+license-files = ["LICENSE"]
 authors = [{ name = "Sybila" }]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -23,4 +26,4 @@ Repository = "https://github.com/sybila/biodivine-py"
 
 [tool.maturin]
 module-name = "biodivine_sys"
-features = ["extension-module"]
+features = ["extension-module", "abi3"]

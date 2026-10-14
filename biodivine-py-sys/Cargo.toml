@@ -20,6 +20,11 @@ crate-type = ["cdylib", "rlib"]
 # tells PyO3 not to link against libpython, which is what an extension module must do. It must NOT
 # be on for `cargo test`, where the crate is linked into a test binary that *does* need libpython.
 extension-module = ["pyo3/extension-module"]
+# Also enabled by maturin: builds against the stable ABI of CPython 3.9, the oldest version that
+# `requires-python` in pyproject.toml allows (the two must agree). One wheel per platform then
+# installs on every later CPython. Free-threaded interpreters cannot load such a wheel; they build
+# the extension from the source distribution instead.
+abi3 = ["pyo3/abi3-py39"]
 
 [lints]
 workspace = true

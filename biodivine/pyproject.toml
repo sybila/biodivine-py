@@ -10,6 +10,9 @@ description = "Python interface of the Biodivine libraries for systems biology."
 requires-python = ">=3.9"
 readme = "README.md"
 license = "MIT"
+# A copy of the repository's LICENSE (a package cannot include files outside its directory);
+# `biodivine/tests/test_package.py` checks that the copy is up to date.
+license-files = ["LICENSE"]
 authors = [{ name = "Sybila" }]
 keywords = ["xml", "dom", "systems biology"]
 classifiers = [
@@ -17,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Text Processing :: Markup :: XML",
+    "Typing :: Typed",
 ]
 # The native extension is released together with this package and pinned exactly: the pure-Python
 # layer relies on the precise API of the `_sys` modules it wraps.
