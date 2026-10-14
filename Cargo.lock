@@ -5,6 +5,7 @@ version = 4
 [[package]]
 name = "biodivine-lib-xml-dom"
 version = "0.1.0"
+source = "git+https://github.com/sybila/biodivine-lib-xml-dom?tag=v0.1.0#f60e976908500a641041de08a0e7bdf26afcdacb"
 dependencies = [
  "cancel-this",
  "parking_lot",
@@ -15,6 +16,7 @@ dependencies = [
 [[package]]
 name = "biodivine-lib-xml-dom-py-sys"
 version = "0.1.0"
+source = "git+https://github.com/sybila/biodivine-lib-xml-dom?tag=v0.1.0#f60e976908500a641041de08a0e7bdf26afcdacb"
 dependencies = [
  "biodivine-lib-xml-dom",
  "pyo3",
