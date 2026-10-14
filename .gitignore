@@ -1,0 +1,9 @@
+/target
+.venv
+.idea
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+*.so
+biodivine/docs/_build
