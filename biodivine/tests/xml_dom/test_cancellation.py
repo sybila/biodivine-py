@@ -22,8 +22,10 @@ pytestmark = pytest.mark.skipif(
     not hasattr(signal, "setitimer"), reason="needs signal.setitimer (Unix)"
 )
 
-#: Large enough that every operation below takes far longer than the timer delay.
-SOURCE = "<root>" + "<item a='1'>text</item>" * 400_000 + "</root>"
+#: Large enough that every operation below takes far longer than the timer delay, and also far
+#: longer than the fixed part of an interruption (signals are checked every 20 ms, then the worker
+#: thread stops and cleans up), which a busy machine can stretch to a hundred milliseconds or more.
+SOURCE = "<root>" + "<item a='1'>text</item>" * 1_200_000 + "</root>"
 
 
 class Interrupted(Exception):
@@ -54,20 +56,16 @@ def _interrupted_after(delay: float, action) -> float:
 def test_every_long_operation_can_be_interrupted() -> None:
     document = xml.Document.parse(SOURCE)
     target = xml.Document()
-    actions = {
-        "parse(str)": lambda: xml.Document.parse(SOURCE),
-        "parse(bytes)": lambda: xml.Document.parse(SOURCE.encode()),
-        "write": document.write,
-        "validate": document.validate,
-        "is_valid": document.is_valid,
-        "validation_errors": document.validation_errors,
-        "deep_clone": document.root.deep_clone,
-        "deep_clone_into": lambda: document.root.deep_clone_into(target),
-    }
-
-    def interrupted_fraction(action) -> tuple[float, float, float]:
-        """Interrupts `action` a tenth of the way in, and returns how long it ran until the
-        exception surfaced, as a fraction of its uninterrupted duration."""
+    for action in (
+        lambda: xml.Document.parse(SOURCE),
+        lambda: xml.Document.parse(SOURCE.encode()),
+        document.write,
+        document.validate,
+        document.is_valid,
+        document.validation_errors,
+        document.root.deep_clone,
+        lambda: document.root.deep_clone_into(target),
+    ):
         started = time.perf_counter()
         action()
         duration = time.perf_counter() - started
@@ -75,18 +73,10 @@ def test_every_long_operation_can_be_interrupted() -> None:
         # start with an automatic collection, which would count towards its time.
         document.collect_garbage()
         target.collect_garbage()
+        # Interrupted a tenth of the way in, the exception must surface well before the operation
+        # could have finished.
         elapsed = _interrupted_after(duration / 10, action)
-        return elapsed / duration, elapsed, duration
-
-    for name, action in actions.items():
-        # An operation that cannot be interrupted raises only once it is done, after at least its
-        # full duration. An interruptible one stops shortly after the signal, but "shortly" includes
-        # a fixed overhead (signals are checked every 20 ms, then the worker thread stops and cleans
-        # up) that a busy machine can stretch considerably. The best of a few attempts must
-        # therefore stop well before the operation could have finished, but no single attempt has
-        # to.
-        attempts = [interrupted_fraction(action) for _ in range(3)]
-        assert min(attempts)[0] < 0.75, (name, attempts)
+        assert elapsed < duration / 2, (action, elapsed, duration)
 
 
 def test_an_interrupted_copy_creates_nothing() -> None:
