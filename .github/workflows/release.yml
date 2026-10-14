@@ -163,8 +163,13 @@ jobs:
           python -m pip install --no-index --only-binary :all: --find-links dist biodivine
       - run: python -m pytest biodivine
 
+  # Runs after the conda upload: a PyPI release cannot be uploaded again, while a conda upload can
+  # (see `conda-publish`). If this job fails after a fix, re-running all jobs uploads the fixed
+  # conda packages again and retries PyPI. For a pre-release, `conda-publish` is skipped, which must not skip this
+  # job: it runs unless a job it needs failed or the workflow was cancelled.
   publish:
-    needs: [version, build, sdist, test]
+    needs: [version, build, sdist, test, conda-publish]
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -202,11 +207,11 @@ jobs:
           # under the same name); only one copy ends up in the merged artifacts below.
           path: conda-dist/*/*.conda
 
-  # Uploads the conda packages once all of them are built, and after the PyPI release, so that both
-  # channels get the same release or neither does. `--force` makes a re-run of a partially
-  # failed upload possible.
+  # Uploads the conda packages once all of them are built and every check of the release has passed
+  # (including the tests of the PyPI wheels), right before the PyPI upload, which depends on it.
+  # `--force` replaces packages that are already uploaded, so this job can always be re-run.
   conda-publish:
-    needs: [conda, publish]
+    needs: [version, build, sdist, test, conda]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8

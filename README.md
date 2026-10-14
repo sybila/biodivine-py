@@ -110,10 +110,12 @@ Both distributions are released together, with the same version:
    * builds the wheels and the source distribution of `biodivine-sys` and the wheel and source
      distribution of `biodivine`, installs the built wheels on every architecture and runs the test
      suite against them;
-   * publishes everything to PyPI;
    * for a stable release (no pre-release suffix such as `-rc.1`, which conda versions cannot
      express), builds and tests the conda packages on every platform and uploads them to the
      `daemontus` channel on anaconda.org;
+   * publishes everything to PyPI. This comes last because a PyPI upload is final, while a conda
+     upload can be replaced: re-running all jobs of a release whose PyPI upload failed uploads the
+     conda packages again and retries PyPI;
    * deploys the API reference to `https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/` and, for
      a stable release (no pre-release suffix such as `-rc.1`), points `latest/` at it;
    * creates a draft GitHub release with the distributions, the documentation and release notes
