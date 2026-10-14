@@ -202,6 +202,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # Cargo checks out each git dependency (a whole library repository, with every file of it)
+      # under its home directory, which the Rust compiler package of conda-forge places inside the
+      # build directory. On Windows, libgit2 refuses paths longer than 260 characters, which the
+      # default output directory in the workspace and the build id (a timestamp) in the build
+      # directory's name exceeded. A short output directory and `--no-build-id` keep Cargo's home at
+      # about 55 characters; a checked-out file may then have a path of up to ~140 characters
+      # inside its repository.
+      OUTPUT_DIR: ${{ startsWith(matrix.os, 'windows') && 'C:/cb' || 'conda-dist' }}
     steps:
       - uses: actions/checkout@v7
       - uses: prefix-dev/rattler-build-action@v0.2.39
@@ -209,13 +218,15 @@ jobs:
           rattler-build-version: v0.76.1
           setup-only: true
       - shell: bash
-        run: rattler-build build --recipe conda/recipe.yaml -c conda-forge --output-dir conda-dist
+        run: |
+          rattler-build build --recipe conda/recipe.yaml -c conda-forge \
+            --output-dir "$OUTPUT_DIR" --no-build-id
       - uses: actions/upload-artifact@v7
         with:
           name: conda-${{ matrix.os }}
           # Every platform builds the `noarch` package of `biodivine` as well (identical files
           # under the same name); only one copy ends up in the merged artifacts below.
-          path: conda-dist/*/*.conda
+          path: ${{ env.OUTPUT_DIR }}/*/*.conda
 
   # Uploads the conda packages once all of them are built and every check of the release has passed
   # (including the tests of the PyPI wheels), right before the PyPI upload, which depends on it.
