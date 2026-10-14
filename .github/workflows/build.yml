@@ -89,6 +89,29 @@ jobs:
           setup-only: true
       - run: rattler-build build --recipe conda/recipe.yaml -c conda-forge --output-dir conda-dist
 
+  # Line and branch coverage of the pure-Python package by its test suite (`make coverage`),
+  # uploaded to Codecov. The upload is skipped where the `CODECOV_TOKEN` secret is not available
+  # (pull requests from forks, or the build stage of a release).
+  coverage:
+    runs-on: ubuntu-latest
+    # At the job level, so that the condition of the upload step can see it.
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: make venv develop coverage
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v7
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        with:
+          files: coverage.xml
+          token: ${{ env.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
   docs:
     runs-on: ubuntu-latest
     steps:
