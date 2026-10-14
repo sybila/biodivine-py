@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -35,6 +37,24 @@ def test_the_versions_agree() -> None:
     pyproject = (REPOSITORY / "biodivine" / "pyproject.toml").read_text(encoding="utf-8")
     assert f'version = "{version}"' in pyproject
     assert f'"biodivine-sys=={version}"' in pyproject
+    # The links to the API reference point to the documentation of this version.
+    documentation = f"https://biodivine.fi.muni.cz/docs/biodivine-py/v{version}/"
+    assert f'Documentation = "{documentation}"' in pyproject
+    readme = (REPOSITORY / "biodivine" / "README.md").read_text(encoding="utf-8")
+    assert f"]({documentation})" in readme
+
+
+def test_the_public_api_listing_runs() -> None:
+    """The release notes compare the output of `scripts/public_api.py` between two versions."""
+    listing = subprocess.run(
+        [sys.executable, str(REPOSITORY / "scripts" / "public_api.py")],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert listing == sorted(listing)
+    assert "biodivine.xml_dom.Document (re-exported from .document)" in listing
+    assert "biodivine.xml_dom.document.Document: class Document" in listing
 
 
 def test_native_submodules_are_importable_by_name() -> None:

@@ -29,6 +29,8 @@ dependencies = ["biodivine-sys==0.1.0"]
 [project.urls]
 Homepage = "https://github.com/sybila/biodivine-py"
 Repository = "https://github.com/sybila/biodivine-py"
+# The documentation of each version is deployed by the release workflow under its tag.
+Documentation = "https://biodivine.fi.muni.cz/docs/biodivine-py/v0.1.0/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/biodivine"]

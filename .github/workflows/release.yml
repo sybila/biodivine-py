@@ -1,12 +1,19 @@
-# Publishes both distributions to PyPI when a version tag is pushed. `biodivine` pins
-# `biodivine-sys` exactly, so the two are always released together, with the same version.
+# Releases both Python distributions when a version tag is pushed: publishes them to PyPI, deploys
+# the API reference to https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/, and creates a draft
+# GitHub release with generated release notes. `biodivine` pins `biodivine-sys` exactly, so the two
+# are always released together, with the same version.
 #
 # The wheels of `biodivine-sys` are built against the stable ABI (the `abi3` feature), so one wheel
-# per platform covers every supported CPython version. Other platforms, and free-threaded
-# interpreters, build the extension from the source distribution, which needs a Rust toolchain.
+# per platform covers every supported CPython version. Free-threaded CPython cannot use the stable
+# ABI and gets one wheel per platform for its newest version. Other platforms and interpreters build
+# the extension from the source distribution, which needs a Rust toolchain.
 #
-# PyPI publishing uses trusted publishing: both PyPI projects must list this repository, this
-# workflow and the `pypi` environment as a trusted publisher.
+# Secrets and settings:
+# * PyPI trusted publishing: both PyPI projects list this repository, this workflow and the `pypi`
+#   environment as a trusted publisher.
+# * `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`: a Tailscale OAuth client that can join the network of
+#   the documentation server.
+# * `OPENROUTER_API_KEY`: the key of the release-notes model (see `.releasenotes.yml`).
 name: release
 
 on:
@@ -16,6 +23,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The free-threaded interpreter that gets its own wheels.
+  FREE_THREADED_PYTHON: "3.14t"
 
 jobs:
   # The tag must name the version that is being released.
@@ -35,32 +46,53 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
+  # Every wheel is built on a runner of its own architecture, so that maturin can always find the
+  # interpreter it builds for. On Linux, the build runs in a manylinux or musllinux container: the
+  # stable-ABI wheels use the oldest glibc that is still possible (manylinux2014, glibc 2.17), the
+  # free-threaded wheels a newer image, since free-threaded interpreters are much newer anyway.
   wheels:
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, target: x86_64, manylinux: auto }
-          - { os: ubuntu-latest, target: aarch64, manylinux: auto }
-          - { os: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2 }
-          - { os: ubuntu-latest, target: aarch64, manylinux: musllinux_1_2 }
+          - { os: ubuntu-latest, target: x86_64, abi3: manylinux2014, free-threaded: 2_28 }
+          - { os: ubuntu-24.04-arm, target: aarch64, abi3: manylinux2014, free-threaded: 2_28 }
+          - { os: ubuntu-latest, target: x86_64, abi3: musllinux_1_2, free-threaded: musllinux_1_2 }
+          - { os: ubuntu-24.04-arm, target: aarch64, abi3: musllinux_1_2, free-threaded: musllinux_1_2 }
           - { os: macos-latest, target: aarch64 }
-          - { os: macos-latest, target: x86_64 }
+          - { os: macos-15-intel, target: x86_64 }
           - { os: windows-latest, target: x64 }
+          - { os: windows-11-arm, target: aarch64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
-      # On Windows, linking against the stable ABI needs the `python3.lib` of an interpreter.
+      # Outside a Linux container, maturin builds for the interpreters of the runner. On Windows,
+      # linking against the stable ABI also needs the `python3.lib` of an interpreter.
+      - id: free-threaded
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.FREE_THREADED_PYTHON }}
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-      - uses: PyO3/maturin-action@v1
+      - name: Stable-ABI wheel
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          manylinux: ${{ matrix.manylinux }}
+          manylinux: ${{ matrix.abi3 }}
           args: --release --out dist --manifest-path biodivine-py-sys/Cargo.toml
+      - name: Free-threaded wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.free-threaded }}
+          # In a Linux container, the interpreter is found by name, elsewhere by its path.
+          args: >-
+            --release --out dist --manifest-path biodivine-py-sys/Cargo.toml
+            --interpreter ${{ runner.os == 'Linux' && format('python{0}', env.FREE_THREADED_PYTHON) || steps.free-threaded.outputs.python-path }}
       - uses: actions/upload-artifact@v7
         with:
-          name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.manylinux || 'native' }}
+          name: dist-${{ matrix.os }}-${{ matrix.target }}-${{ matrix.abi3 || 'native' }}
           path: dist
 
   sdist:
@@ -91,15 +123,20 @@ jobs:
           name: dist-biodivine
           path: dist
 
-  # Installs the release artifacts themselves (not a fresh build) on the oldest and the newest
-  # supported Python version, and runs the test suite against them.
+  # Installs the release artifacts themselves (not a fresh build) and runs the test suite against
+  # them: on every architecture, with the oldest and the newest supported Python version and with
+  # the free-threaded interpreter.
   test:
     needs: [wheels, biodivine]
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
-        python-version: ["3.9", "3.14"]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+        python-version: ["3.9", "3.14", "3.14t"]
+        include:
+          # There is no Python 3.9 for Windows on ARM.
+          - { os: windows-11-arm, python-version: "3.14" }
+          - { os: windows-11-arm, python-version: "3.14t" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -130,3 +167,86 @@ jobs:
           merge-multiple: true
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Builds the API reference and copies it to the documentation server, as `<tag>/` in the
+  # directory of this repository. An existing directory of the same tag is replaced.
+  docs:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - uses: dtolnay/rust-toolchain@stable
+      - run: make venv develop docs
+      - name: Package
+        run: |
+          cp -r biodivine/docs/_build "$GITHUB_REF_NAME"
+          zip -qr "docs-$GITHUB_REF_NAME.zip" "$GITHUB_REF_NAME"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: docs
+          path: docs-${{ github.ref_name }}.zip
+      # Connect to the internal network.
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Deploy
+        env:
+          TS_HOST: sybila-infra
+          DEPLOY_DIR: /root/sybila-infra/stratus/infra/biodivine/docs/biodivine-py
+          TAG: ${{ github.ref_name }}
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new root@"$TS_HOST" true
+          scp "docs-$TAG.zip" root@"$TS_HOST:/tmp/docs-biodivine-py-$TAG.zip"
+          ssh root@"$TS_HOST" "
+              mkdir -p '$DEPLOY_DIR'
+              rm -rf '$DEPLOY_DIR/$TAG'
+              unzip -q -o /tmp/docs-biodivine-py-$TAG.zip -d '$DEPLOY_DIR'
+              rm /tmp/docs-biodivine-py-$TAG.zip"
+
+  # Creates a draft GitHub release with generated release notes, the distributions and the
+  # documentation. It is published by hand, after the notes are reviewed.
+  release:
+    needs: [publish, docs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install llm-release-notes
+        run: |
+          python -m venv .notes-venv
+          .notes-venv/bin/pip install git+https://github.com/daemontus/llm-release-notes.git@v0.1.0
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          .notes-venv/bin/python -m llm_release_notes.cli --verbose synthesize \
+            --repo https://github.com/${{ github.repository }}.git \
+            --version "$GITHUB_REF_NAME" \
+            --output release-notes.md \
+            --config .releasenotes.yml
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: docs
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          body_path: release-notes.md
+          files: |
+            dist/*
+            docs-${{ github.ref_name }}.zip
