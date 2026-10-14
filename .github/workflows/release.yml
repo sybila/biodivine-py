@@ -1,7 +1,8 @@
-# Releases both Python distributions when a version tag is pushed: publishes them to PyPI, deploys
-# the API reference to https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/, and creates a draft
-# GitHub release with generated release notes. `biodivine` pins `biodivine-sys` exactly, so the two
-# are always released together, with the same version.
+# Releases both Python distributions when a version tag is pushed: publishes them to PyPI and (for
+# a stable release) to the `daemontus` channel on anaconda.org, deploys the API reference to
+# https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/, and creates a draft GitHub release with
+# generated release notes. `biodivine` pins `biodivine-sys` exactly, so the two are always released
+# together, with the same version.
 #
 # The wheels of `biodivine-sys` are built against the stable ABI (the `abi3` feature), so one wheel
 # per platform covers every supported CPython version. Free-threaded CPython cannot use the stable
@@ -14,6 +15,7 @@
 # * `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`: a Tailscale OAuth client that can join the network of
 #   the documentation server.
 # * `OPENROUTER_API_KEY`: the key of the release-notes model (see `.releasenotes.yml`).
+# * `ANACONDA_TOKEN`: an anaconda.org API token that can upload to the `daemontus` channel.
 name: release
 
 on:
@@ -27,6 +29,8 @@ permissions:
 env:
   # The free-threaded interpreter that gets its own wheels.
   FREE_THREADED_PYTHON: "3.14t"
+  # The anaconda.org channel of the conda packages.
+  ANACONDA_OWNER: daemontus
 
 jobs:
   # The tag must name the version that is being released.
@@ -125,7 +129,8 @@ jobs:
 
   # Installs the release artifacts themselves (not a fresh build) and runs the test suite against
   # them: on every architecture, with the oldest and the newest supported Python version and with
-  # the free-threaded interpreter.
+  # the free-threaded interpreter, and on Linux also with every version in between (which all use
+  # the same stable-ABI wheel).
   test:
     needs: [wheels, biodivine]
     strategy:
@@ -134,6 +139,10 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
         python-version: ["3.9", "3.14", "3.14t"]
         include:
+          - { os: ubuntu-latest, python-version: "3.10" }
+          - { os: ubuntu-latest, python-version: "3.11" }
+          - { os: ubuntu-latest, python-version: "3.12" }
+          - { os: ubuntu-latest, python-version: "3.13" }
           # There is no Python 3.9 for Windows on ARM.
           - { os: windows-11-arm, python-version: "3.14" }
           - { os: windows-11-arm, python-version: "3.14t" }
@@ -167,6 +176,53 @@ jobs:
           merge-multiple: true
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Builds the conda packages (`conda/recipe.yaml`) on every platform; the recipe runs the test
+  # suite against them. Conda versions cannot contain a pre-release suffix such as `-rc.1`, so
+  # pre-releases are only published to PyPI.
+  conda:
+    needs: version
+    if: ${{ !contains(github.ref_name, '-') }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/rattler-build-action@v0.2.39
+        with:
+          rattler-build-version: v0.76.1
+          setup-only: true
+      - shell: bash
+        run: rattler-build build --recipe conda/recipe.yaml -c conda-forge --output-dir conda-dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: conda-${{ matrix.os }}
+          # Every platform builds the `noarch` package of `biodivine` as well (identical files
+          # under the same name); only one copy ends up in the merged artifacts below.
+          path: conda-dist/*/*.conda
+
+  # Uploads the conda packages once all of them are built, and after the PyPI release, so that both
+  # channels get the same release or neither does. `--force` makes a re-run of a partially
+  # failed upload possible.
+  conda-publish:
+    needs: [conda, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: conda-*
+          merge-multiple: true
+          path: conda-dist
+      - uses: prefix-dev/rattler-build-action@v0.2.39
+        with:
+          rattler-build-version: v0.76.1
+          setup-only: true
+      - env:
+          ANACONDA_API_KEY: ${{ secrets.ANACONDA_TOKEN }}
+        run: |
+          rattler-build upload anaconda --owner "$ANACONDA_OWNER" --channel main --force \
+            conda-dist/*/*.conda
 
   # Builds the API reference and copies it to the documentation server, as `<tag>/` in the
   # directory of this repository. An existing directory of the same tag is replaced. For a stable

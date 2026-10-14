@@ -7,3 +7,5 @@ __pycache__
 .ruff_cache
 *.so
 biodivine/docs/_build
+# rattler-build output (`rattler-build build --recipe conda/recipe.yaml`)
+/output

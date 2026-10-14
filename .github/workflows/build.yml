@@ -77,6 +77,18 @@ jobs:
       - run: ruff check biodivine scripts
       - run: python -m pytest biodivine
 
+  # Builds the conda packages, which also runs the test suite against them; the release builds them
+  # on every platform.
+  conda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: prefix-dev/rattler-build-action@v0.2.39
+        with:
+          rattler-build-version: v0.76.1
+          setup-only: true
+      - run: rattler-build build --recipe conda/recipe.yaml -c conda-forge --output-dir conda-dist
+
   docs:
     runs-on: ubuntu-latest
     steps:

@@ -7,8 +7,9 @@ resolver = "3"
 
 [workspace.package]
 # The version of both Python distributions: `biodivine-sys` takes it from this manifest (maturin's
-# `dynamic = ["version"]`), and `biodivine/pyproject.toml` repeats it, together with an exact pin of
-# `biodivine-sys`. `biodivine/tests/test_package.py` checks that the three numbers agree.
+# `dynamic = ["version"]`), `biodivine/pyproject.toml` repeats it, together with an exact pin of
+# `biodivine-sys`, and so does `conda/recipe.yaml`. `biodivine/tests/test_package.py` checks that
+# the four numbers agree.
 version = "0.1.0"
 rust-version = "1.95"
 license = "MIT"

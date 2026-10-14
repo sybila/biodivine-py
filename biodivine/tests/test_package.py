@@ -37,6 +37,8 @@ def test_the_versions_agree() -> None:
     pyproject = (REPOSITORY / "biodivine" / "pyproject.toml").read_text(encoding="utf-8")
     assert f'version = "{version}"' in pyproject
     assert f'"biodivine-sys=={version}"' in pyproject
+    recipe = (REPOSITORY / "conda" / "recipe.yaml").read_text(encoding="utf-8")
+    assert f'  version: "{version}"' in recipe
 
 
 def test_the_public_api_listing_runs() -> None:

@@ -13,8 +13,15 @@ package, implemented in Rust and wrapped in idiomatic Python classes:
 pip install biodivine
 ```
 
-The package depends on `biodivine-sys`, a native extension that contains the Rust code of every
-library and is installed automatically. To build both from a checkout of the `biodivine-py`
+or, with conda (the packages are in the `daemontus` channel and need `conda-forge`):
+
+```sh
+conda install -c conda-forge -c daemontus biodivine
+```
+
+The package works with CPython 3.9 and newer, including the free-threaded build (PyPI only). It
+depends on `biodivine-sys`, a native extension that contains the Rust code of every library and is
+installed automatically. To build both from a checkout of the `biodivine-py`
 repository instead, run `make develop` there (it needs a Rust toolchain and creates a virtual
 environment in `.venv`).
 

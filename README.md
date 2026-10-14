@@ -83,6 +83,7 @@ dependencies with Cargo `[patch]` entries during the build (described in the boo
 * `python`: builds the release wheel of `biodivine-sys` and runs `ruff` and `pytest` against it on
   Linux, macOS and Windows, with the oldest and the newest supported Python version and with the
   free-threaded build of the newest one;
+* `conda`: builds the conda packages on Linux, which runs the test suite against them;
 * `docs`: builds the API reference with warnings denied.
 
 ### Adding a library
@@ -101,15 +102,18 @@ dependencies with Cargo `[patch]` entries during the build (described in the boo
 Both distributions are released together, with the same version:
 
 1. Pin every `_sys` crate to a release tag of its library.
-2. Set the new version in `[workspace.package]` of [`Cargo.toml`](Cargo.toml) and, twice (the
-   version and the pin of `biodivine-sys`), in [`biodivine/pyproject.toml`](biodivine/pyproject.toml).
-   `make verify` checks that the three agree.
+2. Set the new version in `[workspace.package]` of [`Cargo.toml`](Cargo.toml), twice (the version
+   and the pin of `biodivine-sys`) in [`biodivine/pyproject.toml`](biodivine/pyproject.toml), and in
+   [`conda/recipe.yaml`](conda/recipe.yaml). `make verify` checks that all of them agree.
 3. Push the tag `v<version>`. [`release.yml`](.github/workflows/release.yml) then:
    * checks that the tag matches the version, and runs every check of `build.yml`;
    * builds the wheels and the source distribution of `biodivine-sys` and the wheel and source
      distribution of `biodivine`, installs the built wheels on every architecture and runs the test
      suite against them;
    * publishes everything to PyPI;
+   * for a stable release (no pre-release suffix such as `-rc.1`, which conda versions cannot
+     express), builds and tests the conda packages on every platform and uploads them to the
+     `daemontus` channel on anaconda.org;
    * deploys the API reference to `https://biodivine.fi.muni.cz/docs/biodivine-py/<tag>/` and, for
      a stable release (no pre-release suffix such as `-rc.1`), points `latest/` at it;
    * creates a draft GitHub release with the distributions, the documentation and release notes
@@ -118,19 +122,32 @@ Both distributions are released together, with the same version:
      lists the public API that is compared between the two versions).
 4. Review the release notes and publish the GitHub release.
 
-The `biodivine-sys` wheels are built against the stable ABI of Python 3.9, so there is one wheel per
-platform: Linux (manylinux2014 and musllinux, x86-64 and ARM), macOS (ARM and x86-64) and Windows
+The `biodivine-sys` wheels are built against the stable ABI of Python 3.9: the extension only uses
+the part of the Python C API that CPython promises to keep binary compatible, so one wheel, tagged
+`cp39-abi3`, installs on CPython 3.9 and every later version, without a build per version. There is
+therefore one wheel per platform: Linux (manylinux2014 and musllinux, x86-64 and ARM), macOS (ARM and x86-64) and Windows
 (x86-64 and ARM). Free-threaded Python cannot use the stable ABI, so each platform also gets a wheel
 for the free-threaded build of the newest Python version (on Linux for manylinux_2_28, which is
 glibc 2.28). Anywhere else, pip builds the extension from the source distribution, which needs a
 Rust toolchain.
+
+The conda packages are built by [rattler-build](https://rattler.build) from
+[`conda/recipe.yaml`](conda/recipe.yaml): a `biodivine-sys` package per platform (Linux and macOS,
+x86-64 and ARM, and Windows x86-64), which uses conda-forge's `python-abi3` convention to cover
+every Python version from 3.9 on, and a `noarch` `biodivine` package. To build and test them
+locally (with rattler-build installed):
+
+```sh
+rattler-build build --recipe conda/recipe.yaml -c conda-forge
+```
 
 The release workflow needs:
 
 * PyPI trusted publishing: the `biodivine` and `biodivine-sys` projects on PyPI must both list this
   repository, the `release.yml` workflow and the `pypi` environment as a trusted publisher;
 * the secrets `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` (a Tailscale OAuth client that reaches the
-  documentation server) and `OPENROUTER_API_KEY` (the release-notes model).
+  documentation server), `OPENROUTER_API_KEY` (the release-notes model) and `ANACONDA_TOKEN` (an
+  anaconda.org token that can upload to the `daemontus` channel).
 
 ## License
 

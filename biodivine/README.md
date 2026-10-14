@@ -9,6 +9,8 @@ package, and every submodule is an idiomatic Python layer over a Rust implementa
 
 ```sh
 pip install biodivine
+# or
+conda install -c conda-forge -c daemontus biodivine
 ```
 
 ## Example
