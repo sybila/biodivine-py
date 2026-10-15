@@ -190,7 +190,25 @@ jobs:
           pattern: dist-*
           merge-multiple: true
           path: dist
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Separate the two distributions
+        run: |
+          mkdir dist-biodivine
+          mv dist/biodivine-[0-9]* dist-biodivine/
+      # Two uploads, `biodivine-sys` first: `biodivine` pins it exactly, so it must never be on PyPI
+      # without it. Each upload also gets its own trusted-publishing token.
+      #
+      # `skip-existing`: PyPI never replaces a file, so a file that is already there is one from an
+      # earlier, partially failed attempt at this release. Skipping it lets a re-run upload the rest.
+      - name: Publish biodivine-sys
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
+      - name: Publish biodivine
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist-biodivine/
+          skip-existing: true
 
   # Builds the conda packages (`conda/recipe.yaml`) on every platform; the recipe runs the test
   # suite against them. Conda versions cannot contain a pre-release suffix such as `-rc.1`, so
